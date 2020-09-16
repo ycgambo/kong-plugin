@@ -4,36 +4,13 @@ local helpers = require "spec.helpers"
 local PLUGIN_NAME = "myplugin"
 
 
-local strategies = {} do
-  for _, strategy in helpers.each_strategy() do
-    strategies[#strategies + 1] = strategy
-  end
-  strategies[#strategies + 1] = "off"
-end
-
--- creates a temporary declarative config file from the current db contents
--- @param strategy db strategy to use
--- @return filename of config file when strategy is `off`, otherwise `nil`
-helpers.write_declarative_config = function(strategy)
-  if strategy ~= "off" then
-    return
-  end
-
-  local filename="/tmp/kong_test_config.yml"
-  os.remove(filename)
-  assert(helpers.kong_exec("config db_export "..filename))
-  return filename
-end
-
-
---for _, strategy in helpers.each_strategy() do
-for _, strategy in ipairs(strategies) do
+for _, strategy in helpers.all_strategies() do
   describe(PLUGIN_NAME .. ": (access) [#" .. strategy .. "]", function()
     local client
 
     lazy_setup(function()
 
-      local bp = helpers.get_db_utils(strategy == "off" and "postgres" or strategy, nil, { PLUGIN_NAME })
+      local bp = helpers.get_db_utils(strategy, nil, { PLUGIN_NAME })
 
       -- Inject a test route. No need to create a service, there is a default
       -- service which will echo the request.
@@ -55,11 +32,8 @@ for _, strategy in ipairs(strategies) do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         -- make sure our plugin gets loaded
         plugins = "bundled," .. PLUGIN_NAME,
-        -- load declarative config if 'database=off' (returns 'nil' if not 'off')
+        -- load declarative config, only if 'strategy=off' (returns 'nil' if not 'off')
         declarative_config = helpers.write_declarative_config(strategy),
-        -- mess up DB config in case of db-less, as confirmation it is really db-less
-        pg_host = strategy == "off" and "unknownhost.konghq.com" or nil,
-        cassandra_contact_points = strategy == "off" and "unknownhost.konghq.com" or nil,
       }))
     end)
 
