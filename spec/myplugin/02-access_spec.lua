@@ -10,7 +10,7 @@ for _, strategy in helpers.all_strategies() do
 
     lazy_setup(function()
 
-      local bp = helpers.get_db_utils(strategy, nil, { PLUGIN_NAME })
+      local bp = helpers.get_db_utils(strategy == "off" and "postgres" or strategy, nil, { PLUGIN_NAME })
 
       -- Inject a test route. No need to create a service, there is a default
       -- service which will echo the request.
@@ -32,8 +32,8 @@ for _, strategy in helpers.all_strategies() do
         nginx_conf = "spec/fixtures/custom_nginx.template",
         -- make sure our plugin gets loaded
         plugins = "bundled," .. PLUGIN_NAME,
-        -- load declarative config, only if 'strategy=off' (returns 'nil' if not 'off')
-        declarative_config = helpers.write_declarative_config(strategy),
+        -- write & load declarative config, only if 'strategy=off'
+        declarative_config = strategy == "off" and helpers.write_declarative_config() or nil,
       }))
     end)
 
